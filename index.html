@@ -24,17 +24,25 @@
 
       const lines = text.split('\n').map(l => l.trim()).filter(l => l);
       const name = lines[0];
-      const creator = lines.find(l => l.startsWith('Created by:'))?.split(':')[1].trim();
-      const created = lines.find(l => l.startsWith('Created:'))?.split(':')[1].trim();
+
+      // find creator and creation date by position
+      const creatorIndex = lines.findIndex(l => l.toLowerCase().startsWith("created by"));
+      const creator = creatorIndex !== -1 && lines[creatorIndex + 1] ? lines[creatorIndex + 1] : "";
+
+      const createdIndex = lines.findIndex(l => l.toLowerCase().startsWith("created"));
+      const creationDate = createdIndex !== -1 && lines[createdIndex + 1] ? lines[createdIndex + 1] : "";
+
       const idMatch = text.match(/Level ID:\s*(\d+)/);
       const id = idMatch ? idMatch[1] : "";
 
-      const runsStart = lines.findIndex(l => l.startsWith('1\t'));
+      // find where runs start (line starting with a number + tab or space)
+      const runsStart = lines.findIndex(l => /^\d+\s|\d+\t/.test(l));
       const runs = [];
+
       for (let i = runsStart; i < lines.length; i++) {
         const parts = lines[i].split(/\t+/);
         if (parts.length < 5) continue;
-        const [rank, player, timeStr, arrow, finished, runid] = parts;
+        const [rank, player, timeStr, arrow, finished] = parts;
         const date = finished.split(' ')[0];
         runs.push({
           name: player,
@@ -43,7 +51,6 @@
         });
       }
 
-      // find verifier = oldest date
       let verifier = "";
       if (runs.length > 0) {
         verifier = runs.reduce((a, b) => (a.date < b.date ? a : b)).name;
@@ -57,7 +64,7 @@
         thumbnail: "thumbs/" + name.replace(/\s+/g, '').toLowerCase() + ".png",
         levelLink: "https://narrowarrow.xyz/levelid=" + id,
         id,
-        creationDate: created,
+        creationDate,
         beater: runs
       };
 
