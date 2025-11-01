@@ -2,93 +2,58 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Level Data Converter</title>
+  <title>Leaderboard to JSON</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; }
-    textarea { width: 100%; height: 200px; }
-    pre { background: #f4f4f4; padding: 10px; border: 1px solid #ccc; }
-    button { margin-top: 10px; padding: 8px 12px; }
+    textarea { width: 100%; height: 250px; }
+    pre { background: #f4f4f4; padding: 10px; white-space: pre-wrap; }
   </style>
 </head>
 <body>
-  <h2>Level Data Input</h2>
-  <p>Paste your info here:</p>
-  <textarea id="input"></textarea>
-  <br>
+  <h2>Paste Leaderboard Info</h2>
+  <textarea id="input"></textarea><br><br>
   <button onclick="convert()">Convert to JSON</button>
-
   <h2>Output JSON</h2>
   <pre id="output"></pre>
 
   <script>
-    function sanitizeLevelName(name) {
-      return name.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9-]/g, '');
-    }
-
     function convert() {
-      const text = document.getElementById("input").value.trim().split("\n");
-      if (text.length < 5) {
-        document.getElementById("output").textContent = "Invalid input.";
-        return;
-      }
+      const raw = document.getElementById("input").value.trim().split("\n");
+      let data = {};
+      let beaters = [];
 
-      // First line: Level name
-      const levelName = text[0].trim();
+      // Extract top-level info
+      data.rank = 1; // always 1 as per your rule
+      data.name = raw[0].trim();
+      data.creator = raw[2].trim().toLowerCase();
+      data.creationDate = raw[4].trim();
+      
+      // Thumbnail
+      data.thumbnail = "thumbs/" + data.name.toLowerCase().replace(/\s+/g, "") + ".png";
 
-      // Second line: remove "Created by:" label
-      const creator = text[1].replace("Created by:", "").trim();
+      // Find Level ID
+      const idLine = raw.find(line => line.includes("Level ID"));
+      const id = idLine.split(":").pop().trim();
+      data.id = id;
+      data.levelLink = "https://narrowarrow.xyz/levelid=" + id;
 
-      // Third line: remove "Created:" label
-      const creationDate = text[2].replace("Created:", "").trim();
-
-      // Optional: Likes line (skip for now)
-      // Fourth line could be Likes, so table starts after that
-      let startIndex = 4;
-      if (text[3].startsWith("Likes:")) {
-        startIndex = 5;
-      }
-
-      const beaters = [];
-      for (let i = startIndex; i < text.length; i++) {
-        const line = text[i].trim();
-        if (line.startsWith("Rank") || line.startsWith("Total runs")) continue;
-        if (!line) continue;
-
+      // Parse runs
+      const runLines = raw.filter(line => /^\d+\s/.test(line));
+      runLines.forEach(line => {
         const parts = line.split(/\s+/);
-        if (parts.length < 6) continue;
-
         const name = parts[1];
-        const time = parseFloat(parts[2].replace("s", ""));
-        const finishedAt = parts[4]; // YYYY-MM-DD from timestamp
+        const time = parseFloat(parts[2].replace("s",""));
+        const date = parts[4]; // YYYY-MM-DD
+        beaters.push({ name, time, date });
+      });
 
-        beaters.push({ name, time, date: finishedAt });
-      }
+      // Verifier = earliest date
+      let earliest = beaters.reduce((a,b) => (a.date < b.date ? a : b));
+      data.verifier = earliest.name;
 
-      // Find verifier = earliest date
-      let verifier = "";
-      if (beaters.length > 0) {
-        verifier = beaters.reduce((earliest, current) => {
-          return new Date(current.date) < new Date(earliest.date) ? current : earliest;
-        }).name;
-      }
+      data.beater = beaters;
 
-      // Example: generate id and link if you want
-      const id = ""; // fill in if you have it
-      const levelLink = id ? "https://narrowarrow.xyz/levelid=" + id : "";
-
-      const json = {
-        rank: 1,
-        name: levelName,
-        creator: creator,
-        verifier: verifier,
-        thumbnail: "thumbs/" + sanitizeLevelName(levelName) + "thumbnail.jpg",
-        levelLink: levelLink,
-        id: id,
-        creationDate: creationDate,
-        beater: beaters
-      };
-
-      document.getElementById("output").textContent = JSON.stringify(json, null, 2);
+      document.getElementById("output").textContent = JSON.stringify(data, null, 2);
     }
   </script>
 </body>
