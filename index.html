@@ -36,10 +36,10 @@
       // First line: Level name
       const levelName = text[0].trim();
 
-      // Second line: Created by
+      // Second line: remove "Created by:" label
       const creator = text[1].replace("Created by:", "").trim();
 
-      // Third line: Created date
+      // Third line: remove "Created:" label
       const creationDate = text[2].replace("Created:", "").trim();
 
       // Parse table rows
@@ -73,11 +73,11 @@
         rank: 1,
         name: levelName,
         creator: creator,
+        creationDate: creationDate,
         verifier: verifier,
         thumbnail: "thumbs/" + sanitizeLevelName(levelName) + "thumbnail.jpg",
         levelLink: "",
         id: "",
-        creationDate: creationDate,
         beater: beaters
       };
 
