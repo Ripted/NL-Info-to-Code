@@ -12,7 +12,7 @@
 </head>
 <body>
   <h2>Level Data Input</h2>
-  <p>Paste your info here (like your "Dead Clover" example):</p>
+  <p>Paste your info here:</p>
   <textarea id="input"></textarea>
   <br>
   <button onclick="convert()">Convert to JSON</button>
@@ -45,12 +45,18 @@
       // Parse table rows
       const beaters = [];
       for (let i = 5; i < text.length; i++) {
-        const parts = text[i].trim().split(/\s+/);
+        const line = text[i].trim();
+
+        // Skip header row and "Total runs" line
+        if (line.startsWith("Rank") || line.startsWith("Total runs")) continue;
+        if (!line) continue;
+
+        const parts = line.split(/\s+/);
         if (parts.length < 6) continue;
 
         const name = parts[1];
         const time = parseFloat(parts[2].replace("s", ""));
-        const finishedAt = parts[5]; // date only (YYYY-MM-DD)
+        const finishedAt = parts[4]; // YYYY-MM-DD from timestamp
 
         beaters.push({ name, time, date: finishedAt });
       }
