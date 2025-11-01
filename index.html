@@ -22,7 +22,6 @@
 
   <script>
     function sanitizeLevelName(name) {
-      // lowercase, remove spaces, keep dash, remove non-alphanumeric except dash
       return name.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9-]/g, '');
     }
 
@@ -42,12 +41,16 @@
       // Third line: remove "Created:" label
       const creationDate = text[2].replace("Created:", "").trim();
 
-      // Parse table rows
-      const beaters = [];
-      for (let i = 5; i < text.length; i++) {
-        const line = text[i].trim();
+      // Optional: Likes line (skip for now)
+      // Fourth line could be Likes, so table starts after that
+      let startIndex = 4;
+      if (text[3].startsWith("Likes:")) {
+        startIndex = 5;
+      }
 
-        // Skip header row and "Total runs" line
+      const beaters = [];
+      for (let i = startIndex; i < text.length; i++) {
+        const line = text[i].trim();
         if (line.startsWith("Rank") || line.startsWith("Total runs")) continue;
         if (!line) continue;
 
@@ -69,15 +72,19 @@
         }).name;
       }
 
+      // Example: generate id and link if you want
+      const id = ""; // fill in if you have it
+      const levelLink = id ? "https://narrowarrow.xyz/levelid=" + id : "";
+
       const json = {
         rank: 1,
         name: levelName,
         creator: creator,
-        creationDate: creationDate,
         verifier: verifier,
         thumbnail: "thumbs/" + sanitizeLevelName(levelName) + "thumbnail.jpg",
-        levelLink: "",
-        id: "",
+        levelLink: levelLink,
+        id: id,
+        creationDate: creationDate,
         beater: beaters
       };
 
