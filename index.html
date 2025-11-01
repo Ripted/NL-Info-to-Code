@@ -5,56 +5,117 @@
   <title>Leaderboard to JSON</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; }
-    textarea { width: 100%; height: 250px; }
+    textarea { width: 100%; height: 260px; }
     pre { background: #f4f4f4; padding: 10px; white-space: pre-wrap; }
+    button { padding: 8px 14px; }
   </style>
 </head>
 <body>
   <h2>Paste Leaderboard Info</h2>
-  <textarea id="input"></textarea><br><br>
-  <button onclick="convert()">Convert to JSON</button>
+  <textarea id="input" placeholder="Paste the raw text here..."></textarea><br><br>
+  <button id="btn">Convert to JSON</button>
   <h2>Output JSON</h2>
   <pre id="output"></pre>
 
   <script>
-    function convert() {
-      const raw = document.getElementById("input").value.trim().split("\n");
-      let data = {};
+    function parseBlock(text) {
+      // Normalize lines (remove empty lines and trim)
+      const lines = text
+        .split(/\r?\n/)
+        .map(l => l.trim())
+        .filter(l => l.length > 0);
+
+      if (lines.length === 0) return null;
+
+      const data = { rank: 1 }; // per your rule
       let beaters = [];
 
-      // Extract top-level info
-      data.rank = 1; // always 1 as per your rule
-      data.name = raw[0].trim();
-      data.creator = raw[2].trim().toLowerCase();
-      data.creationDate = raw[4].trim();
-      
-      // Thumbnail
+      // Name: first non-empty line
+      data.name = lines[0];
+
+      // Created by
+      const creatorIdx = lines.findIndex(l => /^Created by:\s*/i.test(l));
+      if (creatorIdx !== -1) {
+        const creator = lines[creatorIdx + 1] && !/^\w+:/.test(lines[creatorIdx + 1])
+          ? lines[creatorIdx + 1]
+          : lines[creatorIdx].replace(/^Created by:\s*/i, "");
+        data.creator = (creator || "").trim().toLowerCase();
+      }
+
+      // Created date
+      const createdIdx = lines.findIndex(l => /^Created:\s*/i.test(l));
+      if (createdIdx !== -1) {
+        const created = lines[createdIdx].replace(/^Created:\s*/i, "").trim();
+        data.creationDate = created;
+      }
+
+      // Level ID (at the end line)
+      const idLine = lines.find(l => /Level ID:\s*\d+/i.test(l));
+      if (idLine) {
+        const idMatch = idLine.match(/Level ID:\s*(\d+)/i);
+        if (idMatch) {
+          data.id = idMatch[1];
+          data.levelLink = "https://narrowarrow.xyz/levelid=" + data.id;
+        }
+      }
+
+      // Thumbnail: thumbs/<lowercase no spaces>.png
       data.thumbnail = "thumbs/" + data.name.toLowerCase().replace(/\s+/g, "") + ".png";
 
-      // Find Level ID
-      const idLine = raw.find(line => line.includes("Level ID"));
-      const id = idLine.split(":").pop().trim();
-      data.id = id;
-      data.levelLink = "https://narrowarrow.xyz/levelid=" + id;
+      // Parse runs: lines like
+      // 1  sqm  163.113s  Energy Arrow  2025-10-05 14:47:02  1911746
+      const runRegex = /^(\d+)\s+([^\s]+)\s+([\d.]+)s\s+.+?\s+(\d{4}-\d{2}-\d{2})\s+\d{2}:\d{2}:\d{2}(?:\s+\d+)?$/;
 
-      // Parse runs
-      const runLines = raw.filter(line => /^\d+\s/.test(line));
-      runLines.forEach(line => {
-        const parts = line.split(/\s+/);
-        const name = parts[1];
-        const time = parseFloat(parts[2].replace("s",""));
-        const date = parts[4]; // YYYY-MM-DD
-        beaters.push({ name, time, date });
-      });
+      for (const l of lines) {
+        // Skip the header line and totals
+        if (/^Rank\s+Player\s+Time\s+Arrow\s+Finished At\s+Run ID$/i.test(l)) continue;
+        if (/^Total runs:\s*\d+$/i.test(l)) continue;
 
-      // Verifier = earliest date
-      let earliest = beaters.reduce((a,b) => (a.date < b.date ? a : b));
-      data.verifier = earliest.name;
+        const m = l.match(runRegex);
+        if (m) {
+          const name = m[2];
+          const time = parseFloat(m[3]);
+          const date = m[4]; // YYYY-MM-DD only (ignore clock time)
+          beaters.push({ name, time, date });
+        }
+      }
+
+      // Verifier = earliest date (oldest)
+      if (beaters.length > 0) {
+        const earliest = beaters.reduce((a, b) => (a.date < b.date ? a : b));
+        data.verifier = earliest.name.toLowerCase(); // matches your example casing
+      }
 
       data.beater = beaters;
 
-      document.getElementById("output").textContent = JSON.stringify(data, null, 2);
+      return data;
     }
+
+    function convert() {
+      const raw = document.getElementById("input").value.trim();
+      if (!raw) {
+        document.getElementById("output").textContent = "Paste the text and try again.";
+        return;
+      }
+
+      // Support multiple blocks separated by blank lines or a separator line
+      const blocks = raw
+        .split(/\n\s*\n(?:-{3,}\s*\n)?/g)
+        .map(b => b.trim())
+        .filter(b => b.length > 0);
+
+      const results = [];
+      for (const block of blocks) {
+        const parsed = parseBlock(block);
+        if (parsed) results.push(parsed);
+      }
+
+      document.getElementById("output").textContent =
+        results.length === 1 ? JSON.stringify(results[0], null, 2)
+                             : JSON.stringify(results, null, 2);
+    }
+
+    document.getElementById("btn").addEventListener("click", convert);
   </script>
 </body>
 </html>
