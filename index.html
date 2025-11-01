@@ -25,20 +25,20 @@
       const lines = text.split('\n').map(l => l.trim()).filter(l => l);
       const name = lines[0];
 
-      // find creator and creation date by position
-      const creatorIndex = lines.findIndex(l => l.toLowerCase().startsWith("created by"));
+      // creator
+      const creatorIndex = lines.findIndex(l => /^created by:?$/i.test(l));
       const creator = creatorIndex !== -1 && lines[creatorIndex + 1] ? lines[creatorIndex + 1] : "";
 
-      const createdIndex = lines.findIndex(l => l.toLowerCase().startsWith("created"));
+      // creation date
+      const createdIndex = lines.findIndex(l => /^created:?$/i.test(l));
       const creationDate = createdIndex !== -1 && lines[createdIndex + 1] ? lines[createdIndex + 1] : "";
 
       const idMatch = text.match(/Level ID:\s*(\d+)/);
       const id = idMatch ? idMatch[1] : "";
 
-      // find where runs start (line starting with a number + tab or space)
+      // runs
       const runsStart = lines.findIndex(l => /^\d+\s|\d+\t/.test(l));
       const runs = [];
-
       for (let i = runsStart; i < lines.length; i++) {
         const parts = lines[i].split(/\t+/);
         if (parts.length < 5) continue;
